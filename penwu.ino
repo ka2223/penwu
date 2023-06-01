@@ -12,11 +12,11 @@
 ESP8266WebServer server(80); // 创建一个Web服务器实例，监听80端口
 
 
-const int ledPin = 2; // LED连接到2号端口
+const int ledPin = 2; // 连接到2号端口
 bool autoMode = false; // 自动模式初始状态为关闭
 
-unsigned long ledOnTime = 1000; // LED点亮时间，单位：毫秒
-unsigned long ledOffTime = 1000; // LED熄灭时间，单位：毫秒
+unsigned long ledOnTime = 12000; // 点亮时间，单位：毫秒
+unsigned long ledOffTime = 1800000; // 熄灭时间，单位：毫秒
 unsigned long lastChangeTime = 0; // 上一次改变LED状态的时间
 unsigned long lastChangeTime1 = 0; 
 unsigned long currentTime = 0; // 获取当前时间
@@ -24,21 +24,21 @@ unsigned long lastUpdateTime = 0 ;  //时间更新周期
 
 unsigned long epochTime = 0 ; //获取Unix时间戳
 WiFiUDP ntpUDP; // 创建一个UDP实例
-NTPClient timeClient(ntpUDP, "cn.pool.ntp.org", 28800); // 创建一个NTPClient实例，设置时间服务器为cn.pool.ntp.org，时区为东八区
+NTPClient timeClient(ntpUDP, "cn.pool.ntp.org", 28800); // 创建NTPClient，设置时间服务器为cn.pool.ntp.org，时区为东八区
 
-int startHour = 12; // 自动模式开始小时数
-int startMinute = 0; // 自动模式开始分钟数
-int endHour = 17; // 自动模式结束小时数
-int endMinute = 30; // 自动模式结束分钟数
+int startHour = 12; // 自动模式开始小时
+int startMinute = 0; // 自动模式开始分钟
+int endHour = 17; // 自动模式结束小时
+int endMinute = 30; // 自动模式结束分钟
 int on_remiant = ledOnTime/1000 ;
 int off_remiant = ledOffTime/1000;
-float ver = 2.31 ;//版本信息
+float ver = 0.91 ;//版本信息
 int  saved_on = 0 ;   //保存的信息
 int  saved_off = 0 ;   //保存的信息
 int  saved_xk  = 0;    //保存的信息
 void setup() {
   pinMode(ledPin, OUTPUT); // 设置ledPin为输出模式
-  digitalWrite(ledPin, HIGH); // 初始状态为熄灭
+  digitalWrite(ledPin, LOW); // 初始状态为熄灭
   Serial.begin(115200); // 设置串口波特率为115200
   WiFiManager wifiManager;       // 创建WiFiManager对象 初始化WiFiManager
 
@@ -47,7 +47,7 @@ void setup() {
     Serial.println("未找到已保存的网络配置，进入配网模式");
     wifiManager.setAPCallback(configModeCallback); // 设置配置模式回调函数
     wifiManager.setConfigPortalTimeout(180);       // 设置配置门户超时时间（秒）
-    wifiManager.startConfigPortal("ESP8266_AP");   // 启动配置门户
+    wifiManager.startConfigPortal("ESP8266_AP");   // 启动配置ap
   } else {
     // 尝试连接到已保存的网络
     WiFi.begin(WiFi.SSID().c_str(), WiFi.psk().c_str());
@@ -61,13 +61,13 @@ void setup() {
       Serial.print(".");
       timeout++;
 
-      // 如果连接超时，进入配网模式
-      if (timeout > 60) {
-        Serial.println("\n连接超时，进入配网模式");
-        wifiManager.setAPCallback(configModeCallback);
-        wifiManager.setConfigPortalTimeout(180);
-        wifiManager.startConfigPortal("ESP8266_AP");
-        break;
+  // 如果连接超时，进入配网模式
+  if (timeout > 60) {
+       Serial.println("\n连接超时，进入配网模式");
+       wifiManager.setAPCallback(configModeCallback);
+       wifiManager.setConfigPortalTimeout(180);
+       wifiManager.startConfigPortal("ESP8266_AP");
+       break;
       }
     }
 
@@ -92,10 +92,10 @@ void setup() {
 //  Serial.println("");
  // Serial.print("Connected to ");        //wifi 用户名 密码 连接
  // Serial.println(ssid);
- // Serial.print("IP address: ");
- // Serial.println(WiFi.localIP());
- // Serial.println("连接成功！");
-   EEPROM.begin(1000); // 初始化EEPROM，2为每个数据的大小，单位为字节  
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  Serial.println("连接成功！");
+   EEPROM.begin(1000); // 初始化EEPROM，1000为每个数据的大小，单位为字节  
    EEPROM.get(8, saved_on);
    Serial.println(saved_on);
    EEPROM.get(12, saved_off);
@@ -115,7 +115,7 @@ void setup() {
      Serial.print("off cs:"); 
      Serial.println( ledOffTime);
 
-   if(saved_xk == 0  ){
+  if(saved_xk == 0  ){   //自动模式状态判断
      autoMode = false ;
 
    }else if(saved_xk == 1 ){
@@ -133,8 +133,8 @@ void setup() {
 
   server.begin(); // 启动Web服务器
   Serial.println("HTTP server started");
-    on_remiant = ledOnTime/1000 ;
-    off_remiant = ledOffTime/1000 ;
+  on_remiant = ledOnTime/1000 ;
+  off_remiant = ledOffTime/1000 ;
 }
 
 void loop() {
@@ -155,26 +155,26 @@ if (currentTime - lastUpdateTime >= 21600000) {
  
   if (autoMode) { // 如果是自动模式    
     if (digitalRead(ledPin) == LOW && currentTime - lastChangeTime >= ledOffTime && checkTime(startHour, startMinute, endHour, endMinute, timeClient.getHours(), timeClient.getMinutes())) { // 如果LED熄灭且到了点亮时间且在定时范围内
-      digitalWrite(ledPin, HIGH); // 点亮LED
+      digitalWrite(ledPin, HIGH); // 点亮
       on_remiant = ledOnTime/1000 ;
-      off_remiant = ledOffTime/1000 ;
+      off_remiant = 0 ;
       lastChangeTime = currentTime; // 更新上一次改变LED状态的时间
     }else if (digitalRead(ledPin) == HIGH && currentTime - lastChangeTime >= ledOnTime && checkTime(startHour, startMinute, endHour, endMinute, timeClient.getHours(), timeClient.getMinutes())) { // 如果LED点亮且到了熄灭时间且在定时范围
-      digitalWrite(ledPin, LOW); // 熄灭LED
-      on_remiant = ledOnTime/1000 ;
+      digitalWrite(ledPin, LOW); // 熄灭
+      on_remiant = 0 ;
       off_remiant = ledOffTime/1000 ;
 
       lastChangeTime = currentTime; // 更新上一次改变LED状态的时间
     }
 
 
-   if(checkTime(startHour, startMinute, endHour, endMinute, timeClient.getHours(), timeClient.getMinutes())){
+   if(checkTime(startHour, startMinute, endHour, endMinute, timeClient.getHours(), timeClient.getMinutes())){  //运行时倒计时
         if(currentTime - lastChangeTime1 >= 1000){    
            if(digitalRead(ledPin) == LOW){
-                    off_remiant  = off_remiant -1 ;  
+                    off_remiant--  ;  
                     lastChangeTime1 = currentTime;
           }else if (digitalRead(ledPin) == HIGH){
-                    on_remiant  = on_remiant -1 ;
+                    on_remiant-- ;
        
                    lastChangeTime1 = currentTime;
      }
@@ -197,18 +197,18 @@ void handleRoot() {
   html += "</style>";
   
   html +="<meta charset=\"utf-8\"><body style=\"text-align: center; font-size: 20px;\">"; // 创建一个HTML字符串，并设置居中和字体放大
-  html += "<h1>Motor Control</h1>"; // 添加标题
+  html += "<h1>控制设置</h1>"; // 添加标题
   html += "<div style=\"font-size: 24px;\">"; // 设置字体放大
-  html += "Time: " +  timeClient.getFormattedTime() + "<br>"; // 显示当前时间
+  html += "时间: " +  timeClient.getFormattedTime() + "<br>"; // 显示当前时间
   html += "</div>";
   html += "<form action=\"/set\" method=\"get\">"; // 创建一个表单，提交到/set路径
-  html += " Auto mode: <input type=\"checkbox\" name=\"autoMode\" value=\"1\" style=\"width: 25px; height: 25px;\""; // 创建一个复选框，name为autoMode，value为1或0，并设置宽度和高度
+  html += " 自动模式: <input type=\"checkbox\" name=\"autoMode\" value=\"1\" style=\"width: 25px; height: 25px;\""; // 创建一个复选框，name为autoMode，value为1或0，并设置宽度和高度
   html += (autoMode ? "checked" : ""); // 如果autoMode为true，则在复选框上添加checked属性
   html += "><br>";
-  html += "LED on time  (s): <input type=\"number\" name=\"onTime\" value=\"" + String(ledOnTime/1000) + "\" style=\"font-size: 21px;height:30px ; width:85;\">"; // 创建一个文本框，name为onTime，value为ledOnTime，并设置字体放大
+  html += "工作时间  (s): <input type=\"number\" name=\"onTime\" value=\"" + String(ledOnTime/1000) + "\" style=\"font-size: 21px;height:30px ; width:85;\">"; // 创建一个文本框，name为onTime，value为ledOnTime，并设置字体放大
   html += " 剩余: " + String(on_remiant)+ " s<br>" ;
   
-  html += "LED off time  (s): <input type=\"number\" name=\"offTime\" value=\"" + String(ledOffTime/1000) + "\" style=\"font-size: 21px;height:30px ; width:85;\">"; // 创建一个文本框，name为offTime，value为ledOffTime，并设置字体放大
+  html += "等待时间  (s): <input type=\"number\" name=\"offTime\" value=\"" + String(ledOffTime/1000) + "\" style=\"font-size: 21px;height:30px ; width:85;\">"; // 创建一个文本框，name为offTime，value为ledOffTime，并设置字体放大
   html += " 剩余: " + String(off_remiant)+ " s" ;
   html += "<br>"; 
   html += "自动开始时间: <input type=\"number\" name=\"startHour\" value=\"" + String(startHour) + "\" style=\"font-size: 21px;height:30px ; width:60;\">:<input type=\"number\" name=\"startMinute\" value=\"" + String(startMinute) + "\" style=\"font-size: 21px;height:30px ; width:60;\"><br>"; // 创建一个文本框，name为startHour和startMinute，value为startHour和startMinute，并设置字体放大
@@ -225,10 +225,10 @@ void handleRoot() {
   html += "<a href=\"/off\"><button style=\"width: 120px; height: 50px; font-size: 21px;\">关 闭</button></a>"; // 创建一个链接，点击后调用handleOff函数，并设置宽度、高度和字体放大
   html += "<br>";
    html += "<br>";
-  html += "<form method='POST' action='/update' enctype='multipart/form-data'>"; // 创建一个上传表单
-  html += "<input type='file' name='update'>";  // 添加文件上传按钮
-  html += "<input type='submit' value='Update'>"; // 添加提交按钮
-  html += "</form>";  // 结束上传表单
+  //html += "<form method='POST' action='/update' enctype='multipart/form-data'>"; // 创建一个上传表单
+ // html += "<input type='file' name='update'>";  // 添加文件上传按钮
+  //html += "<input type='submit' value='Update'>"; // 添加提交按钮
+ // html += "</form>";  // 结束上传表单
   
   html += "<br>";
   html += "版本: " + String(ver)+ "<br>"; //
@@ -244,6 +244,7 @@ void handleSet() {
         EEPROM.begin(500) ;
         EEPROM.put(16, 1);  //保存选中状态
         EEPROM.commit();
+        digitalWrite(ledPin, HIGH);
        } else { 
          autoMode = false;
         EEPROM.begin(500) ;
@@ -291,14 +292,14 @@ server.send(302, "text/plain", ""); // 发送302状态码
 }
 
 void handleOn() {
-     digitalWrite(ledPin, LOW); // 点亮LED 
+     digitalWrite(ledPin, HIGH); // 点亮LED 
      autoMode = false;
      server.sendHeader("Location", "/", true); // 设置重定向到根路径 
      server.send(302, "text/plain", ""); // 发送302状态码 
       }
 
 void handleOff() { 
-  digitalWrite(ledPin, HIGH); // 熄灭LED 
+  digitalWrite(ledPin, LOW); // 熄灭LED 
   autoMode = false;
   server.sendHeader("Location", "/", true); // 设置重定向到根路径 
   server.send(302, "text/plain", ""); // 发送302状态码 
@@ -314,7 +315,7 @@ bool checkTime(int startHour, int startMinute, int endHour, int endMinute, int c
         } else if (currentHour == endHour && currentMinute < endMinute) { // 如果当前时间在结束时间，并且分钟数小于结束分钟数
         return true;
        } else { 
-        digitalWrite(ledPin, HIGH);
+        digitalWrite(ledPin, LOW);
         return false; 
       }
       } else if (startHour > endHour) { // 如果开始时间在结束时间之后
